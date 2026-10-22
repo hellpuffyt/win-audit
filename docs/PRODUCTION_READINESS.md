@@ -3,9 +3,10 @@
 Audit of the `audit/production-readiness` branch. Evidence only; the
 classification at the end is a proposal for the maintainer to confirm.
 
-- Tested commit: the commit that adds this file; it and its parent change only
-  documentation and CI permissions. Module code is unchanged from the default
-  branch (`38c8ec3`).
+- Tested commit: `18c9dd7` (adds this file, the README/CHANGELOG/SECURITY.md/
+  .editorconfig changes and CI permissions). Module code (`*.ps1`, `*.psm1`,
+  `*.psd1`, `tests/`) is byte-identical to the default branch (`38c8ec3`),
+  which is what was linted and tested.
 - Date: 2026-10-22
 - Audit host: macOS 27 (Apple Silicon). **No Windows host and no Windows
   PowerShell were available.** PowerShell 7.6.7 (official linux-arm64 build,
