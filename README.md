@@ -29,7 +29,7 @@ liability, so `win-audit` never does.
 - **Read-only by design.** Every check is a collector (raw data in) plus
   a pure analyser (findings out) - no check ever writes to the registry,
   the filesystem, a service, or account state.
-- **20 checks** across five categories: services, scheduled tasks,
+- **23 checks** across six categories: services, scheduled tasks,
   shares, accounts, policy, and firewall.
 - **Severity-scored findings** with plain-language risk explanations and
   a ready-to-review remediation command for each.
@@ -147,6 +147,27 @@ remediation command before you run it yourself; several of them
 (disabling SMBv1, changing UAC, removing accounts) can affect other
 software on the machine.
 
+## Known limitations
+
+These come from a static review of the collectors; see
+`docs/PRODUCTION_READINESS.md` for details. None of them changes the
+read-only guarantee.
+
+- Several policy checks read only the Group Policy registry location, so a
+  setting changed locally outside policy is not seen: Defender real-time
+  protection (`Set-MpPreference` / Windows Security UI), WinRM
+  `AllowUnencrypted` set through `WSMan:\`, and SMBv1, which is read from
+  the `LanmanServer\Parameters\SMB1` value only (absent on most current
+  systems, where the optional feature / `Get-SmbServerConfiguration`
+  decides). A missing value is treated as "not enabled".
+- The Administrators group is looked up by its English name; on a
+  localized Windows (e.g. `Administratoren`) the lookup fails and the
+  inventory check (WA-ACC-002) silently reports nothing.
+- The user-writable-path heuristic does not treat `C:\ProgramData` as
+  writable, although some of its subfolders are by default.
+- `-OutputFormat Json` with exactly one finding emits a JSON object rather
+  than a one-element array, and with no findings emits nothing (not `[]`).
+
 ## Testing
 
 ```powershell
@@ -178,8 +199,8 @@ module is Windows-only and CI does not claim otherwise.
 ## Security
 
 If you find a security issue in this tool itself (not a finding it
-reports about your machine), please open an issue describing the
-problem. There is no separate disclosure address for this project.
+reports about your machine), please report it privately as described in
+[SECURITY.md](SECURITY.md) rather than in a public issue.
 
 ## License
 
