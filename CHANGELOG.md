@@ -4,6 +4,19 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Changed
+
+- README: the module has 23 checks across six categories (it said 20 and
+  five), security reports go through a private advisory (`SECURITY.md`),
+  and a "Known limitations" section lists gaps found by a static review.
+- CI declares `permissions: contents: read`.
+
+### Added
+
+- `SECURITY.md`, `.editorconfig`, `docs/PRODUCTION_READINESS.md`.
+
 ## [1.0.0] - 2026-08-30
 
 ### Added
