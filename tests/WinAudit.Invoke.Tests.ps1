@@ -8,7 +8,11 @@ Describe 'Invoke-WinAudit filtering and exit code' {
     BeforeAll {
         foreach ($name in 'Get-WinAuditServiceData', 'Get-WinAuditScheduledTaskData', 'Get-WinAuditShareData',
             'Get-WinAuditAccountData', 'Get-WinAuditAdministratorsGroupData', 'Get-WinAuditFirewallProfileData',
-            'Get-WinAuditFirewallRuleData', 'Get-WinAuditScheduledTaskFindings', 'Get-WinAuditShareFindings',
+            'Get-WinAuditFirewallRuleData') {
+            # The leading comma keeps an empty array; a bare @() unrolls to $null, which the analysers reject.
+            Mock -ModuleName WinAudit -CommandName $name -MockWith { , @() }
+        }
+        foreach ($name in 'Get-WinAuditScheduledTaskFindings', 'Get-WinAuditShareFindings',
             'Get-WinAuditAccountFindings', 'Get-WinAuditPolicyFindings', 'Get-WinAuditFirewallFindings') {
             Mock -ModuleName WinAudit -CommandName $name -MockWith { @() }
         }
