@@ -18,31 +18,31 @@ Describe 'Invoke-WinAudit filtering and exit code' {
                 New-WinAuditFinding -Id "WA-TEST-$s" -Severity $s -Category 'Test' -Object 'synthetic' -Risk 'r' -Remediation 'none'
             }
         }
-        $out = Join-Path $TestDrive 'findings.csv'
+        $script:out = Join-Path $TestDrive 'findings.csv'
     }
 
     It 'returns every finding when -Severity is not given' {
-        $r = Invoke-WinAudit -OutputFormat Csv -OutputPath $out -FailSeverityThreshold None -PassThru
+        $r = Invoke-WinAudit -OutputFormat Csv -OutputPath $script:out -FailSeverityThreshold None -PassThru
         @($r).Count | Should -Be 5
     }
 
     It '-Severity keeps exactly the listed severities' {
-        $r = Invoke-WinAudit -Severity Low, Critical -OutputFormat Csv -OutputPath $out -FailSeverityThreshold None -PassThru
+        $r = Invoke-WinAudit -Severity Low, Critical -OutputFormat Csv -OutputPath $script:out -FailSeverityThreshold None -PassThru
         @($r.Severity | Sort-Object) | Should -Be @('Critical', 'Low')
     }
 
     It '-Severity is not a minimum: High does not include Critical' {
-        $r = Invoke-WinAudit -Severity High -OutputFormat Csv -OutputPath $out -FailSeverityThreshold None -PassThru
+        $r = Invoke-WinAudit -Severity High -OutputFormat Csv -OutputPath $script:out -FailSeverityThreshold None -PassThru
         @($r.Severity) | Should -Be @('High')
     }
 
     It '-FailSeverityThreshold is a minimum: Critical breaches High' {
-        $null = Invoke-WinAudit -Severity Critical -OutputFormat Csv -OutputPath $out -FailSeverityThreshold High
+        $null = Invoke-WinAudit -Severity Critical -OutputFormat Csv -OutputPath $script:out -FailSeverityThreshold High
         $LASTEXITCODE | Should -Be 1
     }
 
     It '-FailSeverityThreshold is not breached by findings below it' {
-        $null = Invoke-WinAudit -Severity Info, Low, Medium -OutputFormat Csv -OutputPath $out -FailSeverityThreshold High
+        $null = Invoke-WinAudit -Severity Info, Low, Medium -OutputFormat Csv -OutputPath $script:out -FailSeverityThreshold High
         $LASTEXITCODE | Should -Be 0
     }
 }
