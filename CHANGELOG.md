@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- `Invoke-WinAudit` help described `-Severity` as "at or above" a level. It has
+  always kept only the severities you list; the help now says so, and
+  `tests/WinAudit.Invoke.Tests.ps1` pins the filter and exit-code behaviour.
+
 ### Changed
 
 - README: the module has 23 checks across six categories (it said 20 and

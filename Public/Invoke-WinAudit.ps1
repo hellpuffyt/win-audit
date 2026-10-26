@@ -16,8 +16,12 @@ function Invoke-WinAudit {
             system state, including when -Remediate is supplied.
 
         .PARAMETER Severity
-            Only include findings at or above one of these severities.
-            Accepts one or more of Info, Low, Medium, High, Critical.
+            Only include findings whose severity is one of these values.
+            This is an exact match, not a minimum: -Severity High does not
+            include Critical findings, so list every level you want
+            (e.g. -Severity High,Critical). Accepts one or more of Info,
+            Low, Medium, High, Critical. For a minimum, use
+            -FailSeverityThreshold, which sets the exit code.
 
         .PARAMETER Only
             Only include findings whose Id or Category matches one of
