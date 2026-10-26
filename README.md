@@ -1,17 +1,29 @@
 # win-audit
 
 A read-only PowerShell module that audits a Windows machine's security
-posture - services, scheduled tasks, shares, local accounts/policy, and
-firewall configuration - and reports findings with a severity, a
+posture (services, scheduled tasks, shares, local accounts and policy,
+firewall configuration) and reports findings with a severity, a
 plain-language explanation of what an attacker gains, and the exact
 PowerShell command to fix it.
+
+**Platform:** Windows only (Windows PowerShell 5.1 or later). Every check
+reads Windows state, so it cannot run on macOS or Linux. The test suite runs
+in CI on `windows-latest`.
+
+## Demo
+
+<img src="docs/screenshots/ci-pester-run.png" width="100%" alt="Excerpt of the GitHub Actions log for the Pester step on windows-latest: Pester v6.2.0 runs 4 test files; the service analyser tests show WA-SVC-001 to WA-SVC-004 firing on unsafe input and not firing on the healthy equivalent; the run ends with Tests Passed: 99, Failed: 0.">
+
+*Excerpt of a real CI log (GitHub Actions, `windows-latest`, the `main` run of 2026-10-24), rendered as text with the log
+timestamps and colour codes stripped; 88 passing lines in the middle are omitted. It shows the test suite, not an audit of
+a real machine; no `Invoke-WinAudit` output is shown because it was not run on a Windows host for this README.*
 
 ## What
 
 `Invoke-WinAudit` inspects the machine it runs on and returns a list of
 findings. Each finding has a stable ID, a severity (Info/Low/Medium/
 High/Critical), the object it concerns, the risk in plain terms, and a
-copy-pasteable remediation command. Nothing is changed on the system -
+copy-pasteable remediation command. Nothing is changed on the system,
 not even with `-Remediate`.
 
 ## Why
@@ -20,25 +32,28 @@ Windows hardening guidance mostly exists as long PDFs (CIS benchmarks,
 STIGs, vendor whitepapers). What an administrator actually needs day to
 day is something that looks at *this* machine, tells them what is
 actually wrong right now, explains why it matters, and gives them the
-command to fix it - without taking any action on its own. A security
+command to fix it, without taking any action on its own. A security
 tool that changes things while you're still assessing the machine is a
 liability, so `win-audit` never does.
 
 ## Features
 
 - **Read-only by design.** Every check is a collector (raw data in) plus
-  a pure analyser (findings out) - no check ever writes to the registry,
+  a pure analyser (findings out); no check ever writes to the registry,
   the filesystem, a service, or account state.
 - **23 checks** across six categories: services, scheduled tasks,
   shares, accounts, policy, and firewall.
 - **Severity-scored findings** with plain-language risk explanations and
   a ready-to-review remediation command for each.
-- **Filterable**: `-Severity`, `-Only`, and `-Exclude` narrow the report
-  by severity, rule ID, or category.
+- **Filterable**: `-Severity` keeps findings whose severity is in the list
+  you pass (an exact match, not "at or above"), and `-Only` / `-Exclude`
+  match a rule ID or a category name.
 - **Three output formats**: console table, JSON, CSV.
-- **CI-friendly exit code**: `-FailSeverityThreshold` sets a non-zero
-  exit code when a finding at or above that severity is present, for use
-  in a scheduled compliance check.
+- **CI-friendly exit code**: after every run `$LASTEXITCODE` is `1` if a
+  finding at or above `-FailSeverityThreshold` is present, else `0`. The
+  threshold defaults to `High`; pass `None` to always get `0`. It is a
+  function, so a script has to `exit $LASTEXITCODE` itself.
+- **`-PassThru`** also returns the finding objects on the pipeline.
 - **`-Remediate` is reference-only.** It prints every finding's fix
   command to the console. It does not, and will never, execute anything.
 
@@ -57,7 +72,7 @@ liability, so `win-audit` never does.
 | WA-SHR-002 | Shares | Administrative shares present with auto-share policy still on | Anyone with local admin creds reaches the full disk over the network | Disable `AutoShareServer`/`AutoShareWks` in the registry |
 | WA-SHR-003 | Shares | Share path itself is user-writable at the filesystem level | NTFS ACL on the folder can undermine the share ACL | Move content to a dedicated, ACL'd directory |
 | WA-ACC-001 | Accounts | Password never expires | Compromised credential never forced to rotate | `Set-LocalUser -PasswordNeverExpires $false` |
-| WA-ACC-002 | Accounts | Member of local Administrators (inventory) | Full control of the machine - review for anyone who shouldn't be there | `Remove-LocalGroupMember` if unwarranted |
+| WA-ACC-002 | Accounts | Member of local Administrators (inventory) | Full control of the machine; review for anyone who shouldn't be there | `Remove-LocalGroupMember` if unwarranted |
 | WA-ACC-003 | Accounts | Guest account enabled | Unauthenticated/trivial entry point | `Disable-LocalUser -Name Guest` |
 | WA-ACC-004 | Accounts | Account does not require a password | Anyone can authenticate with no credential | Set a password; require one going forward |
 | WA-POL-001 | Policy | LM/NTLMv1 responses permitted | Crackable/relayable authentication | `LmCompatibilityLevel = 5` |
@@ -82,7 +97,7 @@ Private/
                           Get-LocalUser / registry reads. Return plain data, no decisions.
   Analyzers.ps1           Pure functions: raw data in, WinAudit.Finding objects out. No I/O.
   Helpers.ps1             Shared pure helpers (path heuristics, ACL checks, severity ranking).
-tests/                    Pester 5 suite - analysers tested with synthetic objects, a few
+tests/                    Pester suite: analysers tested with synthetic objects, a few
                           collector paths tested with Mock.
 ```
 
@@ -98,7 +113,7 @@ git clone https://github.com/hellpuffyt/win-audit.git
 Import-Module .\win-audit\WinAudit.psd1
 ```
 
-Requires Windows PowerShell 5.1 or later. No external dependencies for
+Requires Windows PowerShell 5.1 or later on Windows. No external dependencies for
 running the module itself (Pester and PSScriptAnalyzer are only needed
 to run the test suite / linter).
 
@@ -127,8 +142,9 @@ exit $LASTEXITCODE
 
 ## Output
 
-- **Console** (default): a sorted, colour-free table - severity descending,
-  then category.
+- **Console** (default): a table of `Id`, `Severity`, `Category`, `Object`
+  and `Risk`, sorted by severity descending, then category, written to the
+  host. With no findings it prints `No findings.`
 - **JSON**: `-OutputFormat Json [-OutputPath <file>]`. Written to the
   pipeline if no path is given.
 - **CSV**: `-OutputFormat Csv [-OutputPath <file>]`. Same fallback.
@@ -136,12 +152,12 @@ exit $LASTEXITCODE
 Every finding object has: `Id`, `Severity`, `Category`, `Object`, `Risk`,
 `Remediation`, `Details`.
 
-## Safety - read-only by design
+## Safety: read-only by design
 
 `win-audit` never calls a state-changing cmdlet. Collectors only read
 (`Get-*`, registry `Get-ItemProperty`, `Get-Acl`, `Get-AuthenticodeSignature`).
 `-Remediate` formats and prints the same remediation string that's
-already in each finding object - it does not build a script object, does
+already in each finding object. It does not build a script object, does
 not use `Invoke-Expression`, and does not run anything. Review any
 remediation command before you run it yourself; several of them
 (disabling SMBv1, changing UAC, removing accounts) can affect other
@@ -175,9 +191,12 @@ Import-Module Pester -MinimumVersion 5.5.0
 Invoke-Pester -Path tests -CI
 ```
 
+CI installs the latest Pester from the gallery (`-MinimumVersion 5.5.0`;
+the last run used Pester 6.2.0).
+
 99 tests / 100+ assertions. Every analyser rule has a test proving it
 fires on a crafted finding case and a separate test proving it does
-**not** fire on the healthy equivalent - a security tool that's too
+**not** fire on the healthy equivalent. A security tool that's too
 noisy gets turned off, so the false-positive guards get equal weight to
 the detections themselves. A handful of collector tests mock
 `Get-CimInstance`, `Get-ItemProperty`, and `Get-LocalGroupMember` to
@@ -191,7 +210,7 @@ Import-Module PSScriptAnalyzer
 Invoke-ScriptAnalyzer -Path . -Recurse -Severity Warning
 ```
 
-CI (`.github/workflows/ci.yml`) runs both on `windows-latest` only -
+CI (`.github/workflows/ci.yml`) runs both on `windows-latest` only:
 every check here reads Windows-specific state (CIM, the registry,
 `Get-ScheduledTask`, `Get-SmbShare`, `Get-NetFirewallRule`), so this
 module is Windows-only and CI does not claim otherwise.
@@ -204,4 +223,4 @@ reports about your machine), please report it privately as described in
 
 ## License
 
-MIT - see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
