@@ -19,7 +19,11 @@ Describe 'Invoke-WinAudit filtering and exit code' {
         Mock -ModuleName WinAudit -CommandName Get-WinAuditPolicyData -MockWith { [pscustomobject]@{ AutoShareEnabled = $false } }
         Mock -ModuleName WinAudit -CommandName Get-WinAuditServiceFindings -MockWith {
             foreach ($s in 'Info', 'Low', 'Medium', 'High', 'Critical') {
-                New-WinAuditFinding -Id "WA-TEST-$s" -Severity $s -Category 'Test' -Object 'synthetic' -Risk 'r' -Remediation 'none'
+                # Same shape as New-WinAuditFinding, which is private to the module and not visible here.
+                [pscustomobject]@{
+                    PSTypeName = 'WinAudit.Finding'; Id = "WA-TEST-$s"; Severity = $s; Category = 'Test'
+                    Object = 'synthetic'; Risk = 'r'; Remediation = 'none'; Details = ''
+                }
             }
         }
         $script:out = Join-Path $TestDrive 'findings.csv'
